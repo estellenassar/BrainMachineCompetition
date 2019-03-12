@@ -1,4 +1,5 @@
-clear all
+clear
+%close all
 
 load('monkeydata_training.mat')
 
@@ -128,7 +129,7 @@ ylabel('Average firing rate (s^-^1)')
 title('Tuning curve for all neuron units')
 xlim([30/180*pi, 350/180*pi])
 xticks(reaching_angles)
-xticklabels({'30/180*pi', '70/180*pi', '110/180*pi', '150/180*pi', '190/180*pi',...
-    '230/180*pi', '310/180*pi', '350/180*pi'})
+xticklabels({'30/180\pi', '70/180\pi', '110/180\pi', '150/180\pi', '190/180\pi',...
+    '230/180\pi', '310/180\pi', '350/180\pi'})
 
 
