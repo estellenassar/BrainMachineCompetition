@@ -22,7 +22,7 @@ for neu=1:98 % neural unit
     for ang=1:8 % reaching angles
         for trl=1:100 % trials
             
-            for time=1:10:smallest_vector(neu,ang)-10
+            for time=1:dt:smallest_vector(neu,ang)-dt
                 % find the firing rates of one neural unit for one trial
                 number_of_spikes = length(find(trial(trl,ang).spikes(neu,time:time+dt)==1));
                 rate = [rate , number_of_spikes/dt];
