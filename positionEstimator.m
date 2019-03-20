@@ -1,12 +1,7 @@
-function [x, y] = positionEstimator(test_data, beta)
+function [x, y] = positionEstimator(test_data, model)
 
-% modelParameters is currently the weights beta, could be something else
+% modelParameters is currently the model
 
-% classifies using the four nearest neighbors
-x = fitcknn(test_data, beta.X, 'NumNeighbors',4);
-y = fitcknn(test_data, beta.Y, 'NumNeighbors',4);
-
-% need to break down test_data into different trials or different neurons?
-% need to go over how the test function works
-
+x = predict(model.x, test_data, K); % what is k?
+y = predict(model.y, test_data, K);
 end

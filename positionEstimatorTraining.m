@@ -1,4 +1,4 @@
-function [velocity, beta] = positionEstimatorTraining(trial)
+function [model] = positionEstimatorTraining(trial)
 
 %% Get trials to the same length
 
@@ -81,47 +81,24 @@ for trl = 1:50
     y = [velocity(trl,ang).xaxis; velocity(trl,ang).yaxis];
     x = [trainingData(trl,ang).firingRates];
         for neu = 1:98
-            x_single = [1 x(neu,:)];          % look at ind. firing rate per trial and neuron
-            b_1 = lsqminnorm(x_single,y(1,:));    % find weights
+            x_single = [1 x(neu,:)];             % look at ind. firing rate per trial and neuron
+            b_1 = lsqminnorm(x_single,y(1,:));   % find weights
             b_2 = lsqminnorm(x_single,y(2,:));
-            
-            %predX=x_single*b_1;    % check beta values are working
-            %predY=x_single*b_2;
-            
-            %velX(neu,:)=predX;  % store the predictive velocity for all neurons 
-            %velY(neu,:)=predY; 
            
             beta(trl,neu).X = b_1;
             beta(trl,neu).Y = b_2;
-            beta_1 = [];
-            beta_2 = [];
         end
         
-%     output(trl).beta=beta;      % save all beta weightings for each trial and angle
-%     output(trl).velx=velx_pred;
-%     output(trl).vely=vely_pred;
-%     output(trl).rsq= 1 - sum((y - test).^2)/sum((y - mean(y)).^2);
 
 end 
 
-%average of beta across 50 trials 
 
-% % input the remaining trials and find out velocity
-% for t = 51:100
-%     y = [velocity(t,ang).xaxis; velocity(t,ang).yaxis];
-%     x = [trainingData(t,ang).firingRates];
-%         for neu = 1:98
-%             x_single = [1 x(neu,:)];
-%             predX(neu,:) = x_single*b_1;  % each neuron weighted by b1
-%             predY(neu,:) = x_single*b_2;  % each neuron weighted by b2 for Yvel.
-%             % probs need to make b_1 and b_2 an average rather than just one
-%             % realisation
-%         end
-%      velX(t-50,:) = predX;
-%      velY(t-50,:) = predY;
-%     
-%      % next step is to just take in 300 ms and predict along the way
-%    
-% end
+% classifies using the four nearest neighbors
+model.x = fitcknn(test_data, beta.X, 'NumNeighbors',4);
+model.y = fitcknn(test_data, beta.Y, 'NumNeighbors',4);
+
+% need to break down test_data into different trials or different neurons?
+% need to go over how the test function works
+
 
 end
