@@ -1,103 +1,99 @@
-function [model] = positionEstimatorTraining(trial)
-
-%% Get trials to the same length
-
-vector_size = zeros(100,1);
-smallest_vector = zeros(98,8);
-
-for neu=1:98
-    for ang=1:8
-        for t=1:100
-            for trl=1:100
-                vector_size(trl) = length(trial(trl,ang).spikes(neu,:));
-            end
-            smallest_vector(neu,ang) = min(vector_size);
-        end
-    end
-end
-
+function [modelParameters] = positionEstimatorTraining(training_data)
 
 %% Find firing rates
 
-rate = [];
+spike_rate = [];
 firingRates = [];
-vel_xarray = [];
-vel_yarray = [];
+xVelArray = [];
+yVelArray = [];
 
 trainingData = struct([]);
 velocity = struct([]);
 
-dt = 10;
+dt = 10; % bin size
 
-for trl = 1:100 % neural unit
-    for ang = 1:8 % reaching angles
-        for neu = 1:98 % trials
-            for time = 1:dt:smallest_vector(neu,ang)-3*dt
+for k = 1:8
+    for i = 1:98
+        for n = 1:length(training_data)
+            for t = 300:dt:550-dt
                 
                 % find the firing rates of one neural unit for one trial
-                number_of_spikes = length(find(trial(trl,ang).spikes(neu,time:time+dt)==1));
-                rate = cat(2, rate, number_of_spikes/dt);
+                number_of_spikes = length(find(training_data(n,k).spikes(i,t:t+dt)==1));
+                spike_rate = cat(2, spike_rate, number_of_spikes/(dt*0.001));
                 
-                % find the velocity of the hand movement (needs calculating
-                % just once) 
-                if neu==1
-                    x_low = trial(trl,ang).handPos(1,time);
-                    x_high = trial(trl,ang).handPos(1,time+dt);
-
-                    y_low = trial(trl,ang).handPos(2,time);
-                    y_high = trial(trl,ang).handPos(2,time+dt);
-
-                    vel_x = (x_high - x_low) / (dt*0.001);
-                    vel_y = (y_high - y_low) / (dt*0.001);
-                    vel_xarray = cat(2, vel_xarray, vel_x);
-                    vel_yarray = cat(2, vel_yarray, vel_y);
+                % find the velocity of the hand movement
+                % (needs calculating just once for each trial)
+                if i==1
+                    x_low = training_data(n,k).handPos(1,t);
+                    x_high = training_data(n,k).handPos(1,t+dt);
+                    
+                    y_low = training_data(n,k).handPos(2,t);
+                    y_high = training_data(n,k).handPos(2,t+dt);
+                    
+                    x_vel = (x_high - x_low) / (dt*0.001);
+                    y_vel = (y_high - y_low) / (dt*0.001);
+                    xVelArray = cat(2, xVelArray, x_vel);
+                    yVelArray = cat(2, yVelArray, y_vel);
                 end
-   
+                
             end
             
-            % store firing rate for each trial
-            firingRates = cat(1, firingRates, rate);
-            rate = [];
+            % store firing rate of one neural unit for every trial in one array
+            firingRates = cat(2, firingRates, spike_rate);
+            spike_rate = [];
             
         end
         
-        trainingData(trl,ang).firingRates = firingRates;
-       	velocity(trl,ang).xaxis = vel_xarray;
-        velocity(trl,ang).yaxis = vel_yarray;
+        trainingData(i,k).firingRates = firingRates;
+        velocity(k).x = xVelArray;
+        velocity(k).y = yVelArray;
         
-        vel_xarray = [];
-        vel_yarray = [];
         firingRates = [];
         
     end
+    xVelArray = [];
+    yVelArray = [];
 end
 
-%% Regression model
-% Take in data to calculate weights
+%% Linear Regression
+% used to predict velocity
 beta = struct([]);
-ang = 1;
-for trl = 1:50
-        
-    y = [velocity(trl,ang).xaxis; velocity(trl,ang).yaxis];
-    x = [trainingData(trl,ang).firingRates];
-        for neu = 1:98
-            x_single = [1 x(neu,:)];             % look at ind. firing rate per trial and neuron
-            b_1 = lsqminnorm(x_single,y(1,:));   % find weights
-            b_2 = lsqminnorm(x_single,y(2,:));
-           
-            beta(trl,neu).X = b_1;
-            beta(trl,neu).Y = b_2;
+
+for k=1:8
+    
+    vel = [velocity(k).x; velocity(k).y];
+    firingRate = [];
+    for i=1:98
+    firingRate = cat(1, firingRate, trainingData(i,k).firingRates);
+    end
+    
+    beta(k).reachingAngle = lsqminnorm(firingRate',vel');
+    
+end
+
+%% KNN Classifier
+% used to predict the reaching angle from the first 320ms
+
+spikes = [];
+reachingAngle = [];
+spikeCount = zeros(length(training_data),98);
+
+for k = 1:8
+    for i = 1:98
+        for n = 1:length(training_data)
+                number_of_spikes = length(find(training_data(n,k).spikes(i,1:320)==1));
+                spikeCount(n,i) = number_of_spikes;
         end
-        
+    end
+    spikes = cat(1, spikes, spikeCount);
+    reaching_angle(1:length(training_data)) = k;
+    reachingAngle = cat(2, reachingAngle, reaching_angle);
+    
+end
 
-end 
+knn = fitcknn(spikes,reachingAngle);
 
 
-% classifies using the four nearest neighbors
-model.x = fitcknn(velocity.xaxis, beta.X, 'NumNeighbors',4);
-model.y = fitcknn(velocity.yaxis, beta.Y, 'NumNeighbors',4);
-
-% no idea what has to go into fitcknn
-
+modelParameters = struct('beta',beta,'knnModel',knn); 
 
 end
